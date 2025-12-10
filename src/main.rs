@@ -7,7 +7,6 @@ use panic_probe as _;
 
 use embassy_executor::Spawner;
 use embassy_rp::{
-    adc::{self},
     bind_interrupts,
     flash::{self},
     gpio::{self},
@@ -35,7 +34,6 @@ bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
     UART0_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART0>;
     I2C1_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C1>;
-    ADC_IRQ_FIFO => embassy_rp::adc::InterruptHandler;
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO0>;
 });
 
@@ -114,28 +112,25 @@ async fn main(spawner: Spawner) {
     };
 
     let i2c = {
-        let sda = p.PIN_14;
-        let scl = p.PIN_15;
+        let sda = p.PIN_2;
+        let scl = p.PIN_3;
         embassy_rp::i2c::I2c::new_async(p.I2C1, scl, sda, Irqs, Default::default())
     };
 
     let gpio_pins = control::gpio::Pins {
-        asic_resetn: gpio::Output::new(p.PIN_11, gpio::Level::High),
-        asic_pwr_en: gpio::Output::new(p.PIN_8, gpio::Level::Low),
-    };
-
-    let adc = adc::Adc::new(p.ADC, Irqs, Default::default());
-    let adc_pins = control::adc::Pins {
-        adc,
-        vdd: adc::Channel::new_pin(p.PIN_26, gpio::Pull::None),
-        vin: adc::Channel::new_pin(p.PIN_27, gpio::Pull::None),
+        rst0: gpio::Output::new(p.PIN_10, gpio::Level::Low),
+        plug0: gpio::Output::new(p.PIN_11, gpio::Level::Low),
+        rst1: gpio::Output::new(p.PIN_12, gpio::Level::Low),
+        plug1: gpio::Output::new(p.PIN_13, gpio::Level::Low),
+        rst2: gpio::Output::new(p.PIN_26, gpio::Level::Low),
+        plug2: gpio::Output::new(p.PIN_27, gpio::Level::Low),
     };
 
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);
     let led = control::led::Led::new(&mut common, sm0, p.PIN_9, p.DMA_CH0.into());
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
-    unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, adc_pins, led)));
+    unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, led)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
 
     loop {

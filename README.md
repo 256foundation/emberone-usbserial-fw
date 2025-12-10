@@ -75,7 +75,6 @@ When connected the bitcrane usbserial firmware will create two serial ports. Usu
 4. command page
 	- I2C:  0x05
 	- GPIO: 0x06
-	- ADC:  0x07
 	- LED:  0x08 
 5. command 
 	- varies by command page. See below
@@ -114,17 +113,6 @@ Data:
 Example
 
 - Set pin 1 Low: `07 00 00 00 06 01 00`
-
-**ADC**
-
-Commands:
-
-- read VDD: 0x50
-- read VIN: 0x51
-
-Example:
-
-- read VDD Pin: `06 00 00 00 07 50`
 
 **LED**
 

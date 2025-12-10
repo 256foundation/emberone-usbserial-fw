@@ -16,9 +16,6 @@ const I2C_COMMAND: u8 = 5;
 pub mod gpio;
 const GPIO_COMMAND: u8 = 6;
 
-pub mod adc;
-const ADC_COMMAND: u8 = 7;
-
 pub mod led;
 const LED_COMMAND: u8 = 8;
 
@@ -34,7 +31,6 @@ struct Command {
 enum CommandInner {
     I2c(i2c::Command),
     Gpio(gpio::Command),
-    Adc(adc::Command),
     Led(led::Command),
     Error(CommandError),
 }
@@ -52,11 +48,6 @@ impl Command {
                 id,
                 bus: buf[1],
                 inner: CommandInner::Gpio(gpio::Command::from_bytes(&buf[3..])?),
-            }),
-            ADC_COMMAND => Ok(Self {
-                id,
-                bus: buf[1],
-                inner: CommandInner::Adc(adc::Command::from_bytes(&buf[3..])?),
             }),
             LED_COMMAND => Ok(Self {
                 id,
@@ -109,7 +100,6 @@ pub struct Controller {
     tx: Sender<'static, super::UsbDriver>,
     i2c: super::I2cDriver,
     gpio: gpio::Pins<'static>,
-    adc: adc::Pins<'static>,
     led: led::Led<'static>,
 }
 
@@ -124,7 +114,6 @@ impl Controller {
             let res = match cmd.inner {
                 CommandInner::I2c(cmd) => cmd.handle(self).await,
                 CommandInner::Gpio(cmd) => cmd.handle(self).await,
-                CommandInner::Adc(cmd) => cmd.handle(self).await,
                 CommandInner::Led(cmd) => cmd.handle(self).await,
                 CommandInner::Error(err) => Err(err),
             };
@@ -150,9 +139,9 @@ impl Controller {
 }
 
 #[embassy_executor::task]
-pub async fn usb_task(class: CdcAcmClass<'static, super::UsbDriver>, i2c: super::I2cDriver, gpio: gpio::Pins<'static>, adc: adc::Pins<'static>, led: led::Led<'static>) -> ! {
+pub async fn usb_task(class: CdcAcmClass<'static, super::UsbDriver>, i2c: super::I2cDriver, gpio: gpio::Pins<'static>, led: led::Led<'static>) -> ! {
     let (tx, mut rx, mut _ctrl) = class.split_with_control();
-    let mut controller = Controller { tx, i2c, gpio, adc, led };
+    let mut controller = Controller { tx, i2c, gpio, led };
 
     loop {
         rx.wait_connection().await;
