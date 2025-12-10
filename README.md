@@ -1,7 +1,6 @@
-# emberOne usbserial Firmware
+# bitcrane usbserial Firmware
 
-This repository contains RP2040 USB device-side firmware for the emberOne board
-management controller.
+This repository contains RP2040 USB firmware for the [bitcrane v3](https://github.com/skot/bitcrane/tree/RP2040). 
 
 ## Developing
 
@@ -47,7 +46,7 @@ elf2uf2-rs -d target/thumbv6m-none-eabi/release/firmware
 ```
 
 ## Running
-When connected the emberOne usbserial firmware will create two serial ports. Usually the first serial port is "control serial" like I2C, GPIO, ADC and LED. The second serial port is "data serial" and is pass through UART.
+When connected the bitcrane usbserial firmware will create two serial ports. Usually the first serial port is "control serial" like I2C, GPIO, ADC and LED. The second serial port is "data serial" and is pass through UART.
 
 ### Data Serial
 - Second serial port

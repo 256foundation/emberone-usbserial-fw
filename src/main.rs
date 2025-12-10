@@ -12,7 +12,7 @@ use embassy_rp::{
     flash::{self},
     gpio::{self},
     i2c::{self},
-    peripherals::{PIO0, UART1, USB},
+    peripherals::{PIO0, UART0, USB},
     pio::{self},
     usb::{self},
     Peripheral,
@@ -24,7 +24,7 @@ use static_cell::StaticCell;
 mod control;
 mod uart;
 
-pub type AsicUart = UART1;
+pub type AsicUart = UART0;
 pub type I2cPeripheral = embassy_rp::peripherals::I2C1;
 pub type I2cDriver = i2c::I2c<'static, I2cPeripheral, i2c::Async>;
 pub type UsbPeripheral = embassy_rp::peripherals::USB;
@@ -33,7 +33,7 @@ pub type UsbDevice = embassy_usb::UsbDevice<'static, UsbDriver>;
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
-    UART1_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART1>;
+    UART0_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART0>;
     I2C1_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C1>;
     ADC_IRQ_FIFO => embassy_rp::adc::InterruptHandler;
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO0>;
@@ -104,7 +104,7 @@ async fn main(spawner: Spawner) {
     };
 
     let asic_uart = {
-        let (tx_pin, rx_pin, uart) = (p.PIN_8, p.PIN_9, p.UART1);
+        let (tx_pin, rx_pin, uart) = (p.PIN_0, p.PIN_1, p.UART0);
         static UART_TX_BUF: StaticCell<[u8; 64]> = StaticCell::new();
         let tx_buf = &mut UART_TX_BUF.init([0; 64])[..];
         static UART_RX_BUF: StaticCell<[u8; 64]> = StaticCell::new();
@@ -121,7 +121,7 @@ async fn main(spawner: Spawner) {
 
     let gpio_pins = control::gpio::Pins {
         asic_resetn: gpio::Output::new(p.PIN_11, gpio::Level::High),
-        asic_pwr_en: gpio::Output::new(p.PIN_0, gpio::Level::Low),
+        asic_pwr_en: gpio::Output::new(p.PIN_8, gpio::Level::Low),
     };
 
     let adc = adc::Adc::new(p.ADC, Irqs, Default::default());
@@ -132,7 +132,7 @@ async fn main(spawner: Spawner) {
     };
 
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);
-    let led = control::led::Led::new(&mut common, sm0, p.PIN_1, p.DMA_CH0.into());
+    let led = control::led::Led::new(&mut common, sm0, p.PIN_9, p.DMA_CH0.into());
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
     unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, adc_pins, led)));
