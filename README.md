@@ -76,6 +76,7 @@ When connected the bitcrane usbserial firmware will create two serial ports. Usu
 	- I2C:  0x05
 	- GPIO: 0x06
 	- LED:  0x08 
+	- Fan:  0x09
 5. command 
 	- varies by command page. See below
 6. data
@@ -136,3 +137,21 @@ Data:
 Example:
 
 - Set LED Magenta: `09 00 00 00 08 10 FF 00 FF`
+
+**Fan**
+
+Commands:
+
+- set speed: 0x10
+- get tachometer: 0x20
+
+Data:
+
+- [speed percentage 0-100] (for set speed command)
+
+Example:
+
+- Set fan speed to 50%:  `07 00 00 00 09 10 32`
+- Set fan speed to 100%: `07 00 00 00 09 10 64`
+- Read fan tach (RPM):   `06 00 00 00 09 20`
+

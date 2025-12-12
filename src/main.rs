@@ -137,14 +137,14 @@ async fn main(spawner: Spawner) {
         pwm_config.phase_correct = false;
         pwm_config.enable = true; // Explicitly enable PWM
         
-        let pwm = pwm::Pwm::new_output_a(p.PWM_SLICE2, p.PIN_20, pwm_config.clone());
+        let pwm = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm_config.clone());
         
-        let tach = gpio::Input::new(p.PIN_21, gpio::Pull::None);
+        let tach = gpio::Input::new(p.PIN_17, gpio::Pull::None);
         control::fan::Pins { pwm, tach }
     };
 
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);
-    let led = control::led::Led::new(&mut common, sm0, p.PIN_9, p.DMA_CH0.into());
+    let led = control::led::Led::new(&mut common, sm0, p.PIN_24, p.DMA_CH0.into());
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
     unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, fan_pins, led)));
