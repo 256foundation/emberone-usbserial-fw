@@ -119,11 +119,11 @@ async fn main(spawner: Spawner) {
 
     let gpio_pins = control::gpio::Pins {
         rst0: gpio::Output::new(p.PIN_10, gpio::Level::Low),
-        plug0: gpio::Output::new(p.PIN_11, gpio::Level::Low),
+        plug0: gpio::Input::new(p.PIN_11, gpio::Pull::None),
         rst1: gpio::Output::new(p.PIN_12, gpio::Level::Low),
-        plug1: gpio::Output::new(p.PIN_13, gpio::Level::Low),
+        plug1: gpio::Input::new(p.PIN_13, gpio::Pull::None),
         rst2: gpio::Output::new(p.PIN_26, gpio::Level::Low),
-        plug2: gpio::Output::new(p.PIN_27, gpio::Level::Low),
+        plug2: gpio::Input::new(p.PIN_27, gpio::Pull::None),
     };
 
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);

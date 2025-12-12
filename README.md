@@ -104,15 +104,24 @@ Example:
 
 Commands:
 
-- Pin Number
+- RST0: 0x00
+- PLUG0 (read-only): 0x01
+- RST1: 0x02
+- PLUG1 (read-only): 0x03
+- RST2: 0x04
+- PLUG2 (read-only): 0x05
 
 Data:
 
-- [pin level]
+- [pin level] (for set commands)
+- none (for get commands)
 
-Example
+Examples:
 
-- Set pin 1 Low: `07 00 00 00 06 01 00`
+- Set RST0 High: `07 00 00 00 06 00 01`
+- Set RST0 Low: `07 00 00 00 06 00 00`
+- Get RST1: `06 00 00 00 06 02`
+- Get PLUG0: `06 00 00 00 06 01`
 
 **LED**
 
