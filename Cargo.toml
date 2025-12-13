@@ -18,6 +18,9 @@ embassy-time = { git = "https://github.com/embassy-rs/embassy", features = ["def
 embassy-rp = { git = "https://github.com/embassy-rs/embassy", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }
 embassy-usb = { git = "https://github.com/embassy-rs/embassy", features = ["defmt", "max-interface-count-8"] }
 embedded-io-async = "0.6.1"
+fixed = "1.28"
+pio = "0.2"
+pio-proc = "0.2"
 heapless = { version = "0.8.0", features = ["portable-atomic", "defmt-03"] }
 hex = { version = "0.4.3", default-features = false }
 panic-probe = { version = "0.3.2", features = ["print-defmt"] }

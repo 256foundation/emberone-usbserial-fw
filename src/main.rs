@@ -11,7 +11,7 @@ use embassy_rp::{
     flash::{self},
     gpio::{self},
     i2c::{self},
-    peripherals::{PIO0, UART0, UART1, USB},
+    peripherals::{PIO0, PIO1, UART0, UART1, USB},
     pio::{self},
     pwm::{self},
     usb::{self},
@@ -22,6 +22,7 @@ use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
 use static_cell::StaticCell;
 
 mod control;
+mod pio_uart;
 mod uart;
 
 pub type AsicUart = UART0;
@@ -38,6 +39,7 @@ bind_interrupts!(struct Irqs {
     UART1_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART1>;
     I2C1_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C1>;
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO0>;
+    PIO1_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO1>;
 });
 
 const FLASH_SIZE: usize = 4 * 1024 * 1024;
@@ -85,11 +87,11 @@ async fn main(spawner: Spawner) {
     };
 
     let mut builder = {
-        static CONFIG_DESCRIPTOR: StaticCell<[u8; 512]> = StaticCell::new();
+        static CONFIG_DESCRIPTOR: StaticCell<[u8; 640]> = StaticCell::new();
         static BOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
         static CONTROL_BUF: StaticCell<[u8; 128]> = StaticCell::new();
 
-        embassy_usb::Builder::new(usb_driver, usb_config, CONFIG_DESCRIPTOR.init([0; 512]), BOS_DESCRIPTOR.init([0; 256]), &mut [], CONTROL_BUF.init([0; 128]))
+        embassy_usb::Builder::new(usb_driver, usb_config, CONFIG_DESCRIPTOR.init([0; 640]), BOS_DESCRIPTOR.init([0; 256]), &mut [], CONTROL_BUF.init([0; 128]))
     };
 
     let control_class = {
@@ -107,6 +109,12 @@ async fn main(spawner: Spawner) {
     let asic_uart1_class = {
         static UART1_STATE: StaticCell<State> = StaticCell::new();
         let state = UART1_STATE.init(State::new());
+        CdcAcmClass::new(&mut builder, state, 64)
+    };
+
+    let asic_uart2_class = {
+        static UART2_STATE: StaticCell<State> = StaticCell::new();
+        let state = UART2_STATE.init(State::new());
         CdcAcmClass::new(&mut builder, state, 64)
     };
 
@@ -177,10 +185,25 @@ async fn main(spawner: Spawner) {
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);
     let led = control::led::Led::new(&mut common, sm0, p.PIN_24, p.DMA_CH0.into());
 
+    // PIO1 UART for asic_uart2 on GPIO6 (TX) / GPIO7 (RX)
+    let asic_uart2 = {
+        let pio::Pio { mut common, sm0, sm1, .. } = pio::Pio::new(p.PIO1, Irqs);
+        
+        pio_uart::PioUart::new(
+            &mut common,
+            sm0,
+            sm1,
+            p.PIN_6,
+            p.PIN_7,
+            115200, // Default baudrate
+        )
+    };
+
     unwrap!(spawner.spawn(usb_task(builder.build())));
     unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, fan_pins, led)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
     unwrap!(spawner.spawn(uart::usb_task1(asic_uart1_class, asic_uart1)));
+    unwrap!(spawner.spawn(pio_uart::usb_task2(asic_uart2_class, asic_uart2)));
 
     loop {
         watchdog.feed();
