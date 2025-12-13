@@ -1,6 +1,6 @@
 use embassy_rp::{
-    peripherals::{DMA_CH0, PIO0},
-    pio::{Common, Pio, PioPin, StateMachine},
+    peripherals::PIO0,
+    pio::{Common, PioPin, StateMachine},
     pio_programs::ws2812::{PioWs2812, PioWs2812Program},
 };
 use heapless::Vec;

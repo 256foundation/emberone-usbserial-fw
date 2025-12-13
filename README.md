@@ -142,16 +142,28 @@ Example:
 
 Commands:
 
-- set speed: 0x10
-- get tachometer: 0x20
+- set fan1 speed: 0x11
+- get fan1 tachometer: 0x21
+- set fan2 speed: 0x12
+- get fan2 tachometer: 0x22
+- set fan3 speed: 0x13
+- get fan3 tachometer: 0x23
+- set fan4 speed: 0x14
+- get fan4 tachometer: 0x24
 
 Data:
 
-- [speed percentage 0-100] (for set speed command)
+- [speed percentage 0-100] (for set speed commands)
 
-Example:
+Examples:
 
-- Set fan speed to 50%:  `07 00 00 00 09 10 32`
-- Set fan speed to 100%: `07 00 00 00 09 10 64`
-- Read fan tach (RPM):   `06 00 00 00 09 20`
+- Set fan1 speed to 50%:   `07 00 00 00 09 11 32`
+- Set fan1 speed to 100%:  `07 00 00 00 09 11 64`
+- Read fan1 tach (RPM):    `06 00 00 00 09 21`
+- Set fan2 speed to 75%:   `07 00 00 00 09 12 4B`
+- Read fan2 tach (RPM):    `06 00 00 00 09 22`
+- Set fan3 speed to 60%:   `07 00 00 00 09 13 3C`
+- Read fan3 tach (RPM):    `06 00 00 00 09 23`
+- Set fan4 speed to 90%:   `07 00 00 00 09 14 5A`
+- Read fan4 tach (RPM):    `06 00 00 00 09 24`
 

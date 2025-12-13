@@ -41,8 +41,8 @@ bind_interrupts!(struct Irqs {
 const FLASH_SIZE: usize = 4 * 1024 * 1024;
 const VERSION: u16 = 0x0001;
 
-static MANUFACTURER: &str = "256F";
-static PRODUCT: &str = "EmberOne00";
+static MANUFACTURER: &str = "skot";
+static PRODUCT: &str = "bitcrane3";
 
 /// Return a unique serial number for this device by hashing its flash JEDEC ID.
 fn serial_number() -> &'static str {
@@ -138,9 +138,21 @@ async fn main(spawner: Spawner) {
         pwm_config.enable = true; // Explicitly enable PWM
         
         let pwm = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm_config.clone());
-        
         let tach = gpio::Input::new(p.PIN_17, gpio::Pull::Up);
-        control::fan::Pins { pwm, tach }
+        
+        // Fan2: GPIO18 (PWM), GPIO19 (TACH)
+        let pwm2 = pwm::Pwm::new_output_a(p.PWM_SLICE1, p.PIN_18, pwm_config.clone());
+        let tach2 = gpio::Input::new(p.PIN_19, gpio::Pull::Up);
+        
+        // Fan3: GPIO20 (PWM), GPIO21 (TACH)
+        let pwm3 = pwm::Pwm::new_output_a(p.PWM_SLICE2, p.PIN_20, pwm_config.clone());
+        let tach3 = gpio::Input::new(p.PIN_21, gpio::Pull::Up);
+        
+        // Fan4: GPIO22 (PWM), GPIO23 (TACH)
+        let pwm4 = pwm::Pwm::new_output_a(p.PWM_SLICE3, p.PIN_22, pwm_config.clone());
+        let tach4 = gpio::Input::new(p.PIN_23, gpio::Pull::Up);
+        
+        control::fan::Pins { pwm, tach, pwm2, tach2, pwm3, tach3, pwm4, tach4 }
     };
 
     let pio::Pio { mut common, sm0, .. } = pio::Pio::new(p.PIO0, Irqs);

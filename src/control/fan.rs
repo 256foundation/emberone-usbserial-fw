@@ -6,18 +6,30 @@ use super::{CommandError, Controller, ControllerCommand};
 pub struct Pins<'d> {
     pub pwm: pwm::Pwm<'d>,
     pub tach: gpio::Input<'d>,
+    pub pwm2: pwm::Pwm<'d>,
+    pub tach2: gpio::Input<'d>,
+    pub pwm3: pwm::Pwm<'d>,
+    pub tach3: gpio::Input<'d>,
+    pub pwm4: pwm::Pwm<'d>,
+    pub tach4: gpio::Input<'d>,
 }
 
 #[derive(defmt::Format)]
 pub enum Command {
-    SetSpeed(u8),  // 0-100 percent
-    GetTach,
+    SetSpeed(u8),   // 0x11: 0-100 percent
+    GetTach,        // 0x21
+    SetSpeed2(u8),  // 0x12: 0-100 percent for fan2
+    GetTach2,       // 0x22
+    SetSpeed3(u8),  // 0x13: 0-100 percent for fan3
+    GetTach3,       // 0x23
+    SetSpeed4(u8),  // 0x14: 0-100 percent for fan4
+    GetTach4,       // 0x24
 }
 
 impl Command {
     pub fn from_bytes(buf: &[u8]) -> Result<Self, CommandError> {
         match buf[0] {
-            0x10 => {
+            0x11 => {
                 if buf.len() < 2 {
                     return Err(CommandError::Invalid);
                 }
@@ -27,7 +39,40 @@ impl Command {
                 }
                 Ok(Command::SetSpeed(speed))
             }
-            0x20 => Ok(Command::GetTach),
+            0x21 => Ok(Command::GetTach),
+            0x12 => {
+                if buf.len() < 2 {
+                    return Err(CommandError::Invalid);
+                }
+                let speed = buf[1];
+                if speed > 100 {
+                    return Err(CommandError::Invalid);
+                }
+                Ok(Command::SetSpeed2(speed))
+            }
+            0x22 => Ok(Command::GetTach2),
+            0x13 => {
+                if buf.len() < 2 {
+                    return Err(CommandError::Invalid);
+                }
+                let speed = buf[1];
+                if speed > 100 {
+                    return Err(CommandError::Invalid);
+                }
+                Ok(Command::SetSpeed3(speed))
+            }
+            0x23 => Ok(Command::GetTach3),
+            0x14 => {
+                if buf.len() < 2 {
+                    return Err(CommandError::Invalid);
+                }
+                let speed = buf[1];
+                if speed > 100 {
+                    return Err(CommandError::Invalid);
+                }
+                Ok(Command::SetSpeed4(speed))
+            }
+            0x24 => Ok(Command::GetTach4),
             _ => Err(CommandError::Invalid),
         }
     }
@@ -61,6 +106,80 @@ impl ControllerCommand for Command {
                 // Measure fan tachometer pulses
                 // Most fans output 2 pulses per revolution
                 let rpm = measure_fan_rpm(&mut controller.fan.tach).await?;
+                
+                let mut res = heapless::Vec::new();
+                res.extend_from_slice(&rpm.to_le_bytes()).unwrap();
+                Ok(res)
+            }
+            Command::SetSpeed2(speed) => {
+                // Same as SetSpeed but for fan2
+                let duty = (1000u32 * (*speed as u32) / 100) as u16;
+                
+                let mut config = pwm::Config::default();
+                config.top = 1000;
+                config.compare_a = duty;
+                config.compare_b = 0;
+                config.divider = 5.into();
+                config.invert_a = true;
+                config.phase_correct = false;
+                config.enable = true;
+                controller.fan.pwm2.set_config(&config);
+                
+                let mut res = heapless::Vec::new();
+                res.push(0x00).unwrap(); // Success
+                Ok(res)
+            }
+            Command::GetTach2 => {
+                // Measure fan2 tachometer pulses
+                let rpm = measure_fan_rpm(&mut controller.fan.tach2).await?;
+                
+                let mut res = heapless::Vec::new();
+                res.extend_from_slice(&rpm.to_le_bytes()).unwrap();
+                Ok(res)
+            }
+            Command::SetSpeed3(speed) => {
+                let duty = (1000u32 * (*speed as u32) / 100) as u16;
+                
+                let mut config = pwm::Config::default();
+                config.top = 1000;
+                config.compare_a = duty;
+                config.compare_b = 0;
+                config.divider = 5.into();
+                config.invert_a = true;
+                config.phase_correct = false;
+                config.enable = true;
+                controller.fan.pwm3.set_config(&config);
+                
+                let mut res = heapless::Vec::new();
+                res.push(0x00).unwrap();
+                Ok(res)
+            }
+            Command::GetTach3 => {
+                let rpm = measure_fan_rpm(&mut controller.fan.tach3).await?;
+                
+                let mut res = heapless::Vec::new();
+                res.extend_from_slice(&rpm.to_le_bytes()).unwrap();
+                Ok(res)
+            }
+            Command::SetSpeed4(speed) => {
+                let duty = (1000u32 * (*speed as u32) / 100) as u16;
+                
+                let mut config = pwm::Config::default();
+                config.top = 1000;
+                config.compare_a = duty;
+                config.compare_b = 0;
+                config.divider = 5.into();
+                config.invert_a = true;
+                config.phase_correct = false;
+                config.enable = true;
+                controller.fan.pwm4.set_config(&config);
+                
+                let mut res = heapless::Vec::new();
+                res.push(0x00).unwrap();
+                Ok(res)
+            }
+            Command::GetTach4 => {
+                let rpm = measure_fan_rpm(&mut controller.fan.tach4).await?;
                 
                 let mut res = heapless::Vec::new();
                 res.extend_from_slice(&rpm.to_le_bytes()).unwrap();
