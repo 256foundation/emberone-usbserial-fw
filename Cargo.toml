@@ -16,7 +16,7 @@ embassy-futures = { git = "https://github.com/embassy-rs/embassy", features = ["
 embassy-sync = { git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
 embassy-time = { git = "https://github.com/embassy-rs/embassy", features = ["defmt", "defmt-timestamp-uptime"] }
 embassy-rp = { git = "https://github.com/embassy-rs/embassy", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl", "rp2040"] }
-embassy-usb = { git = "https://github.com/embassy-rs/embassy", features = ["defmt"] }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy", features = ["defmt", "max-interface-count-8"] }
 embedded-io-async = "0.6.1"
 heapless = { version = "0.8.0", features = ["portable-atomic", "defmt-03"] }
 hex = { version = "0.4.3", default-features = false }

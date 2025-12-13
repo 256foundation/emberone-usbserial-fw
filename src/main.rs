@@ -11,7 +11,7 @@ use embassy_rp::{
     flash::{self},
     gpio::{self},
     i2c::{self},
-    peripherals::{PIO0, UART0, USB},
+    peripherals::{PIO0, UART0, UART1, USB},
     pio::{self},
     pwm::{self},
     usb::{self},
@@ -25,6 +25,7 @@ mod control;
 mod uart;
 
 pub type AsicUart = UART0;
+pub type AsicUart1 = UART1;
 pub type I2cPeripheral = embassy_rp::peripherals::I2C1;
 pub type I2cDriver = i2c::I2c<'static, I2cPeripheral, i2c::Async>;
 pub type UsbPeripheral = embassy_rp::peripherals::USB;
@@ -34,6 +35,7 @@ pub type UsbDevice = embassy_usb::UsbDevice<'static, UsbDriver>;
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
     UART0_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART0>;
+    UART1_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART1>;
     I2C1_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C1>;
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO0>;
 });
@@ -41,7 +43,7 @@ bind_interrupts!(struct Irqs {
 const FLASH_SIZE: usize = 4 * 1024 * 1024;
 const VERSION: u16 = 0x0001;
 
-static MANUFACTURER: &str = "skot";
+static MANUFACTURER: &str = "OSMU";
 static PRODUCT: &str = "bitcrane3";
 
 /// Return a unique serial number for this device by hashing its flash JEDEC ID.
@@ -83,22 +85,28 @@ async fn main(spawner: Spawner) {
     };
 
     let mut builder = {
-        static CONFIG_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
+        static CONFIG_DESCRIPTOR: StaticCell<[u8; 512]> = StaticCell::new();
         static BOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
-        static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+        static CONTROL_BUF: StaticCell<[u8; 128]> = StaticCell::new();
 
-        embassy_usb::Builder::new(usb_driver, usb_config, CONFIG_DESCRIPTOR.init([0; 256]), BOS_DESCRIPTOR.init([0; 256]), &mut [], CONTROL_BUF.init([0; 64]))
+        embassy_usb::Builder::new(usb_driver, usb_config, CONFIG_DESCRIPTOR.init([0; 512]), BOS_DESCRIPTOR.init([0; 256]), &mut [], CONTROL_BUF.init([0; 128]))
     };
 
     let control_class = {
-        static STATE: StaticCell<State> = StaticCell::new();
-        let state = STATE.init(State::new());
+        static CONTROL_STATE: StaticCell<State> = StaticCell::new();
+        let state = CONTROL_STATE.init(State::new());
         CdcAcmClass::new(&mut builder, state, 64)
     };
 
     let asic_uart_class = {
-        static STATE: StaticCell<State> = StaticCell::new();
-        let state = STATE.init(State::new());
+        static UART0_STATE: StaticCell<State> = StaticCell::new();
+        let state = UART0_STATE.init(State::new());
+        CdcAcmClass::new(&mut builder, state, 64)
+    };
+
+    let asic_uart1_class = {
+        static UART1_STATE: StaticCell<State> = StaticCell::new();
+        let state = UART1_STATE.init(State::new());
         CdcAcmClass::new(&mut builder, state, 64)
     };
 
@@ -108,6 +116,16 @@ async fn main(spawner: Spawner) {
         let tx_buf = &mut UART_TX_BUF.init([0; 64])[..];
         static UART_RX_BUF: StaticCell<[u8; 64]> = StaticCell::new();
         let rx_buf = &mut UART_RX_BUF.init([0; 64])[..];
+
+        embassy_rp::uart::BufferedUart::new(uart, Irqs, tx_pin, rx_pin, tx_buf, rx_buf, Default::default())
+    };
+
+    let asic_uart1 = {
+        let (tx_pin, rx_pin, uart) = (p.PIN_4, p.PIN_5, p.UART1);
+        static UART1_TX_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+        let tx_buf = &mut UART1_TX_BUF.init([0; 64])[..];
+        static UART1_RX_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+        let rx_buf = &mut UART1_RX_BUF.init([0; 64])[..];
 
         embassy_rp::uart::BufferedUart::new(uart, Irqs, tx_pin, rx_pin, tx_buf, rx_buf, Default::default())
     };
@@ -161,6 +179,7 @@ async fn main(spawner: Spawner) {
     unwrap!(spawner.spawn(usb_task(builder.build())));
     unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, fan_pins, led)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
+    unwrap!(spawner.spawn(uart::usb_task1(asic_uart1_class, asic_uart1)));
 
     loop {
         watchdog.feed();

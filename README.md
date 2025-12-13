@@ -46,17 +46,19 @@ elf2uf2-rs -d target/thumbv6m-none-eabi/release/firmware
 ```
 
 ## Running
-When connected the bitcrane usbserial firmware will create two serial ports. Usually the first serial port is "control serial" like I2C, GPIO, ADC and LED. The second serial port is "data serial" and is pass through UART.
+When connected the bitcrane usbserial firmware will create three serial ports:
+1. **Control Serial** - I2C, GPIO, FAN and LED commands
+2. **ASIC UART0** - Passthrough UART on GPIO0 (TX) / GPIO1 (RX)
+3. **ASIC UART1** - Passthrough UART on GPIO4 (TX) / GPIO5 (RX)
 
-### Data Serial
-- Second serial port
-- All data is passed through, both directions.
-- usbserial baudrate is mirrored on the output.
+### ASIC UART Ports (Ports 2 & 3)
+- All data is passed through bidirectionally
+- USB serial baudrate is mirrored to the UART output
+- Supports standard UART baudrates
 
-
-### Control Serial
-- First serial port
-- baudrate does not matter
+### Control Serial (Port 1)
+- Baudrate does not matter
+- Packet-based protocol for device control
 
 **Packet Format**
 
