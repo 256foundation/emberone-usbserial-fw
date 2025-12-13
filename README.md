@@ -109,10 +109,11 @@ Commands:
 
 - RST0: 0x00
 - PLUG0 (read-only): 0x01
-- RST1: 0x02
-- PLUG1 (read-only): 0x03
-- RST2: 0x04
-- PLUG2 (read-only): 0x05
+- RST1: 0x10
+- PLUG1 (read-only): 0x11
+- RST2: 0x20
+- PLUG2 (read-only): 0x21
+- PSU_EN: 0x50
 
 Data:
 
@@ -123,8 +124,15 @@ Examples:
 
 - Set RST0 High: `07 00 00 00 06 00 01`
 - Set RST0 Low: `07 00 00 00 06 00 00`
-- Get RST1: `06 00 00 00 06 02`
+- Get RST1: `06 00 00 00 06 10`
 - Get PLUG0: `06 00 00 00 06 01`
+- Set RST1 High: `07 00 00 00 06 10 01`
+- Get PLUG1: `06 00 00 00 06 11`
+- Set RST2 Low: `07 00 00 00 06 20 00`
+- Get PLUG2: `06 00 00 00 06 21`
+- Set PSU_EN High: `07 00 00 00 06 50 01`
+- Set PSU_EN Low: `07 00 00 00 06 50 00`
+- Get PSU_EN: `06 00 00 00 06 50`
 
 **LED**
 

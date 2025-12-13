@@ -8,6 +8,7 @@ pub struct Pins<'d> {
     pub plug1: embassy_rp::gpio::Input<'d>,
     pub rst2: embassy_rp::gpio::Output<'d>,
     pub plug2: embassy_rp::gpio::Input<'d>,
+    pub psu_en: embassy_rp::gpio::Output<'d>,
 }
 
 #[derive(defmt::Format)]
@@ -23,6 +24,9 @@ pub enum Command {
     SetRst2 { level: bool },
     GetRst2,
     GetPlug2,
+
+    SetPsuEn { level: bool },
+    GetPsuEn,
 }
 
 impl Command {
@@ -33,13 +37,16 @@ impl Command {
             [0x00, level] => Ok(Self::SetRst0 { level: *level > 0 }),
             [0x01] => Ok(Self::GetPlug0),
 
-            [0x02] => Ok(Self::GetRst1),
-            [0x02, level] => Ok(Self::SetRst1 { level: *level > 0 }),
-            [0x03] => Ok(Self::GetPlug1),
+            [0x10] => Ok(Self::GetRst1),
+            [0x10, level] => Ok(Self::SetRst1 { level: *level > 0 }),
+            [0x11] => Ok(Self::GetPlug1),
 
-            [0x04] => Ok(Self::GetRst2),
-            [0x04, level] => Ok(Self::SetRst2 { level: *level > 0 }),
-            [0x05] => Ok(Self::GetPlug2),
+            [0x20] => Ok(Self::GetRst2),
+            [0x20, level] => Ok(Self::SetRst2 { level: *level > 0 }),
+            [0x21] => Ok(Self::GetPlug2),
+
+            [0x50] => Ok(Self::GetPsuEn),
+            [0x50, level] => Ok(Self::SetPsuEn { level: *level > 0 }),
 
             _ => Err(CommandError::Invalid),
         }
@@ -69,6 +76,12 @@ impl super::ControllerCommand for Command {
                 *level
             }
             Command::GetPlug2 => controller.gpio.plug2.is_high(),
+
+            Command::GetPsuEn => bool::from(controller.gpio.psu_en.get_output_level()),
+            Command::SetPsuEn { level } => {
+                controller.gpio.psu_en.set_level((*level).into());
+                *level
+            }
         };
 
         Ok(Vec::from_slice(&[level as u8]).unwrap())

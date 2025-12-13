@@ -143,6 +143,7 @@ async fn main(spawner: Spawner) {
         plug1: gpio::Input::new(p.PIN_13, gpio::Pull::None),
         rst2: gpio::Output::new(p.PIN_26, gpio::Level::Low),
         plug2: gpio::Input::new(p.PIN_27, gpio::Pull::None),
+        psu_en: gpio::Output::new(p.PIN_25, gpio::Level::Low),
     };
 
     let fan_pins = {
