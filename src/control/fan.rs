@@ -73,24 +73,25 @@ impl ControllerCommand for Command {
 /// Measure fan RPM by counting tachometer pulses over a period
 /// Most PC fans output 2 pulses per revolution
 async fn measure_fan_rpm(tach: &mut gpio::Input<'_>) -> Result<u16, CommandError> {
-    let measurement_time = Duration::from_millis(500);
+    let measurement_time = Duration::from_millis(250);
     let start = Instant::now();
     let mut pulse_count = 0u32;
     let mut last_state = tach.is_high();
     
-    // Count rising edges for 500ms
+    // Count falling edges for 250ms (fans typically pull low)
     while start.elapsed() < measurement_time {
         let current_state = tach.is_high();
-        if current_state && !last_state {
+        // Detect falling edge (high to low transition)
+        if !current_state && last_state {
             pulse_count += 1;
         }
         last_state = current_state;
-        Timer::after_micros(100).await; // Sample at 10kHz
+        Timer::after_micros(50).await; // Sample at 20kHz for better edge detection
     }
     
-    // Calculate RPM: (pulses / 2) * (60 / 0.5) = pulses * 60
+    // Calculate RPM: (pulses / 2) * (60 / 0.25) = pulses * 120
     // Most fans have 2 pulses per revolution
-    let rpm = (pulse_count * 60) as u16;
+    let rpm = (pulse_count * 120) as u16;
     
     Ok(rpm)
 }

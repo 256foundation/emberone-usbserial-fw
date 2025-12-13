@@ -139,7 +139,7 @@ async fn main(spawner: Spawner) {
         
         let pwm = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm_config.clone());
         
-        let tach = gpio::Input::new(p.PIN_17, gpio::Pull::None);
+        let tach = gpio::Input::new(p.PIN_17, gpio::Pull::Up);
         control::fan::Pins { pwm, tach }
     };
 
