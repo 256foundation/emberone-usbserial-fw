@@ -52,14 +52,14 @@ When connected the bitcrane usbserial firmware will create four serial ports:
 3. **ASIC UART1** - Passthrough UART on GPIO4 (TX) / GPIO5 (RX)
 4. **ASIC UART2** - Passthrough PIO UART on GPIO6 (TX) / GPIO7 (RX)
 
+### Control Serial (Port 1)
+- Baudrate does not matter
+- Packet-based protocol for device control
+
 ### ASIC UART Ports (Ports 2, 3 & 4)
 - All data is passed through bidirectionally
 - USB serial baudrate is mirrored to the UART output
 - Supports standard UART baudrates
-
-### Control Serial (Port 1)
-- Baudrate does not matter
-- Packet-based protocol for device control
 
 **Packet Format**
 
