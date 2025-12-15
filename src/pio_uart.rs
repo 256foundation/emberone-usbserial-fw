@@ -8,14 +8,14 @@ use embassy_rp::{
     pio::{Common, Config, Direction as PioDirection, FifoJoin, PioPin, ShiftDirection, StateMachine},
     usb::{self},
 };
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, channel::Channel, signal::Signal};
 use pio_proc::pio_asm;
 use embassy_usb::{
     class::cdc_acm::{CdcAcmClass, ControlChanged, Receiver, Sender},
     driver::EndpointError,
 };
-use embedded_io_async::{ErrorType, Read, Write};
+use embedded_io_async::{ErrorType, Write};
 use fixed::traits::ToFixed;
-use fixed::types::U56F8;
 
 pub enum PioUartTaskError {
     Disconnected,
@@ -30,6 +30,11 @@ impl From<EndpointError> for PioUartTaskError {
     }
 }
 
+// Channel for RX data - sized to hold many packets
+static RX_CHANNEL: Channel<CriticalSectionRawMutex, u8, 1024> = Channel::new();
+// Signal to notify baudrate changes
+static BAUD_SIGNAL: Signal<CriticalSectionRawMutex, u32> = Signal::new();
+
 /// PIO-based UART TX with baudrate change support
 pub struct PioUartTx<'d> {
     sm: StateMachine<'d, PIO1, 0>,
@@ -43,8 +48,6 @@ impl<'d> PioUartTx<'d> {
         baud: u32,
     ) -> Self {
         let tx_pin = common.make_pio_pin(tx_pin);
-        sm.set_pins(Level::High, &[&tx_pin]);
-        sm.set_pin_dirs(PioDirection::Out, &[&tx_pin]);
 
         let prg = pio_asm!(
             r#"
@@ -64,19 +67,30 @@ impl<'d> PioUartTx<'d> {
 
         let mut cfg = Config::default();
         cfg.set_out_pins(&[&tx_pin]);
+        cfg.set_set_pins(&[&tx_pin]);
         cfg.use_program(&prg, &[&tx_pin]);
         cfg.shift_out.auto_fill = false;
         cfg.shift_out.direction = ShiftDirection::Right;
         cfg.fifo_join = FifoJoin::TxOnly;
-        cfg.clock_divider = (U56F8::from_num(clk_sys_freq()) / U56F8::from_num(8 * baud)).to_fixed();
+        
+        let clk_freq = clk_sys_freq();
+        defmt::println!("PIO TX: clk_sys_freq = {}, baud = {}", clk_freq, baud);
+        cfg.clock_divider = (clk_freq / (8 * baud)).to_fixed();
+        
         sm.set_config(&cfg);
+        
+        // Set pin direction and initial level AFTER config
+        sm.set_pin_dirs(PioDirection::Out, &[&tx_pin]);
+        sm.set_pins(Level::High, &[&tx_pin]);
+        
         sm.set_enable(true);
+        defmt::println!("PIO TX: pin configured, SM enabled");
 
         Self { sm }
     }
 
     pub fn set_baudrate(&mut self, baud: u32) {
-        let clock_divider = (U56F8::from_num(clk_sys_freq()) / U56F8::from_num(8 * baud)).to_fixed();
+        let clock_divider = (clk_sys_freq() / (8 * baud)).to_fixed();
         self.sm.set_enable(false);
         self.sm.set_clock_divider(clock_divider);
         self.sm.set_enable(true);
@@ -146,7 +160,7 @@ impl<'d> PioUartRx<'d> {
         cfg.set_jmp_pin(&rx_pin);
         sm.set_pin_dirs(PioDirection::In, &[&rx_pin]);
 
-        cfg.clock_divider = (U56F8::from_num(clk_sys_freq()) / U56F8::from_num(8 * baud)).to_fixed();
+        cfg.clock_divider = (clk_sys_freq() / (8 * baud)).to_fixed();
         cfg.shift_in.auto_fill = false;
         cfg.shift_in.direction = ShiftDirection::Right;
         cfg.shift_in.threshold = 32;
@@ -158,7 +172,7 @@ impl<'d> PioUartRx<'d> {
     }
 
     pub fn set_baudrate(&mut self, baud: u32) {
-        let clock_divider = (U56F8::from_num(clk_sys_freq()) / U56F8::from_num(8 * baud)).to_fixed();
+        let clock_divider = (clk_sys_freq() / (8 * baud)).to_fixed();
         self.sm.set_enable(false);
         self.sm.set_clock_divider(clock_divider);
         self.sm.set_enable(true);
@@ -169,65 +183,41 @@ impl<'d> PioUartRx<'d> {
     }
 }
 
-impl ErrorType for PioUartRx<'_> {
-    type Error = Infallible;
-}
-
-impl Read for PioUartRx<'_> {
-    async fn read(&mut self, buf: &mut [u8]) -> Result<usize, Infallible> {
-        let data = self.read_u8().await;
-        buf[0] = data;
-        Ok(1)
-    }
-}
-
-/// PIO-based UART that wraps both TX and RX with baudrate change support
-pub struct PioUart<'d> {
-    pub tx: PioUartTx<'d>,
-    pub rx: PioUartRx<'d>,
-    current_baud: u32,
-}
-
-impl<'d> PioUart<'d> {
-    pub fn new(
-        common: &mut Common<'d, PIO1>,
-        sm_tx: StateMachine<'d, PIO1, 0>,
-        sm_rx: StateMachine<'d, PIO1, 1>,
-        tx_pin: impl PioPin,
-        rx_pin: impl PioPin,
-        baud: u32,
-    ) -> Self {
-        let tx = PioUartTx::new(common, sm_tx, tx_pin, baud);
-        let rx = PioUartRx::new(common, sm_rx, rx_pin, baud);
-        
-        Self {
-            tx,
-            rx,
-            current_baud: baud,
-        }
-    }
-
-    /// Set the baudrate for both TX and RX state machines
-    pub fn set_baudrate(&mut self, baud: u32) {
-        if baud == 0 || baud == self.current_baud {
-            return;
-        }
-        
-        self.tx.set_baudrate(baud);
-        self.rx.set_baudrate(baud);
-        
-        self.current_baud = baud;
-        defmt::println!("PIO UART baudrate set to {}", baud);
-    }
-}
-
+/// Dedicated task to drain PIO RX FIFO into channel buffer
+/// This task runs with high priority and does nothing but read bytes
 #[embassy_executor::task]
-pub async fn usb_task2(class: CdcAcmClass<'static, super::UsbDriver>, mut uart: PioUart<'static>) -> ! {
-    let (mut tx, mut rx, mut ctrl) = class.split_with_control();
+pub async fn pio_rx_task(mut rx: PioUartRx<'static>) -> ! {
+    let sender = RX_CHANNEL.sender();
+    let mut current_baud = 115200u32;
+    
+    loop {
+        // Check for baudrate change signal (non-blocking)
+        if let Some(new_baud) = BAUD_SIGNAL.try_take() {
+            if new_baud != 0 && new_baud != current_baud {
+                rx.set_baudrate(new_baud);
+                current_baud = new_baud;
+                defmt::println!("PIO RX baudrate set to {}", new_baud);
+            }
+        }
+        
+        // Wait for a byte from PIO and immediately send to channel
+        let byte = rx.read_u8().await;
+        // Use try_send to avoid blocking - if channel is full, drop the byte
+        // (better than blocking and losing more bytes from PIO FIFO)
+        let _ = sender.try_send(byte);
+    }
+}
+
+/// USB task that handles TX and receives from channel
+#[embassy_executor::task]
+pub async fn usb_task2(class: CdcAcmClass<'static, super::UsbDriver>, mut tx: PioUartTx<'static>) -> ! {
+    let (mut usb_tx, mut usb_rx, mut ctrl) = class.split_with_control();
+    let rx_receiver = RX_CHANNEL.receiver();
+    let mut current_baud = 115200u32;
 
     loop {
-        rx.wait_connection().await;
-        let _ = pipe_pio_uart(&mut tx, &mut rx, &mut ctrl, &mut uart).await;
+        usb_rx.wait_connection().await;
+        let _ = pipe_pio_uart(&mut usb_tx, &mut usb_rx, &mut ctrl, &mut tx, &rx_receiver, &mut current_baud).await;
     }
 }
 
@@ -236,39 +226,57 @@ pub async fn pipe_pio_uart<'d, T: usb::Instance + 'd>(
     usb_tx: &mut Sender<'d, usb::Driver<'d, T>>,
     usb_rx: &mut Receiver<'d, usb::Driver<'d, T>>,
     ctrl: &mut ControlChanged<'d>,
-    uart: &mut PioUart<'d>,
+    uart_tx: &mut PioUartTx<'d>,
+    rx_receiver: &embassy_sync::channel::Receiver<'static, CriticalSectionRawMutex, u8, 1024>,
+    current_baud: &mut u32,
 ) -> Result<(), PioUartTaskError> {
     let mut usb_buf = [0; 64];
     let mut uart_buf = [0; 64];
 
     loop {
         let usb_read = usb_rx.read_packet(&mut usb_buf);
-        let uart_read = uart.rx.read(&mut uart_buf);
         let control_change = ctrl.control_changed();
+        
+        // Wait for first byte from channel
+        let channel_read = rx_receiver.receive();
 
-        match select3(usb_read, uart_read, control_change).await {
+        match select3(usb_read, channel_read, control_change).await {
             // Forward data from the USB host to the UART
             Either3::First(n) => {
                 let data = &usb_buf[..n?];
-                let _ = uart.tx.write(data).await;
+                let _ = uart_tx.write(data).await;
             }
-            // Forward data from the UART back to the USB host
-            Either3::Second(result) => {
-                match result {
-                    Ok(n) => {
-                        let data = &uart_buf[..n];
-                        usb_tx.write_packet(data).await?;
-                    }
-                    Err(_) => {
-                        // UART read error, continue
+            // Got first byte from channel - drain more if available
+            Either3::Second(first_byte) => {
+                uart_buf[0] = first_byte;
+                let mut count = 1;
+                
+                // Drain any additional bytes from channel without blocking
+                while count < uart_buf.len() {
+                    match rx_receiver.try_receive() {
+                        Ok(byte) => {
+                            uart_buf[count] = byte;
+                            count += 1;
+                        }
+                        Err(_) => break,
                     }
                 }
+                
+                let data = &uart_buf[..count];
+                usb_tx.write_packet(data).await?;
             }
             // Handle baudrate changes from USB CDC control requests
             Either3::Third(()) => {
                 let line_coding = usb_rx.line_coding();
                 let new_baud = line_coding.data_rate();
-                uart.set_baudrate(new_baud);
+                if new_baud != 0 && new_baud != *current_baud {
+                    // Update TX directly
+                    uart_tx.set_baudrate(new_baud);
+                    // Signal RX task to update baudrate
+                    BAUD_SIGNAL.signal(new_baud);
+                    *current_baud = new_baud;
+                    defmt::println!("PIO UART TX baudrate set to {}", new_baud);
+                }
             }
         }
     }

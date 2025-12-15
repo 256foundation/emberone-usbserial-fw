@@ -186,24 +186,20 @@ async fn main(spawner: Spawner) {
     let led = control::led::Led::new(&mut common, sm0, p.PIN_24, p.DMA_CH0.into());
 
     // PIO1 UART for asic_uart2 on GPIO6 (TX) / GPIO7 (RX)
-    let asic_uart2 = {
+    let (asic_uart2_tx, asic_uart2_rx) = {
         let pio::Pio { mut common, sm0, sm1, .. } = pio::Pio::new(p.PIO1, Irqs);
         
-        pio_uart::PioUart::new(
-            &mut common,
-            sm0,
-            sm1,
-            p.PIN_6,
-            p.PIN_7,
-            115200, // Default baudrate
-        )
+        let tx = pio_uart::PioUartTx::new(&mut common, sm0, p.PIN_6, 115200);
+        let rx = pio_uart::PioUartRx::new(&mut common, sm1, p.PIN_7, 115200);
+        (tx, rx)
     };
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
     unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, fan_pins, led)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
     unwrap!(spawner.spawn(uart::usb_task1(asic_uart1_class, asic_uart1)));
-    unwrap!(spawner.spawn(pio_uart::usb_task2(asic_uart2_class, asic_uart2)));
+    unwrap!(spawner.spawn(pio_uart::pio_rx_task(asic_uart2_rx)));
+    unwrap!(spawner.spawn(pio_uart::usb_task2(asic_uart2_class, asic_uart2_tx)));
 
     loop {
         watchdog.feed();
