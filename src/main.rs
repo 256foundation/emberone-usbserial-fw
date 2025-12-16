@@ -144,6 +144,9 @@ async fn main(spawner: Spawner) {
         embassy_rp::i2c::I2c::new_async(p.I2C1, scl, sda, Irqs, Default::default())
     };
 
+    // PSU I2C: Bit-banged on GPIO14 (SDA) / GPIO15 (SCL) at 400kHz
+    let psu_i2c = control::psu::BitBangI2c::new(p.PIN_14, p.PIN_15);
+
     let gpio_pins = control::gpio::Pins {
         rst0: gpio::Output::new(p.PIN_10, gpio::Level::Low),
         plug0: gpio::Input::new(p.PIN_11, gpio::Pull::None),
@@ -195,7 +198,7 @@ async fn main(spawner: Spawner) {
     };
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
-    unwrap!(spawner.spawn(control::usb_task(control_class, i2c, gpio_pins, fan_pins, led)));
+    unwrap!(spawner.spawn(control::usb_task(control_class, psu_i2c, i2c, gpio_pins, fan_pins, led)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
     unwrap!(spawner.spawn(uart::usb_task1(asic_uart1_class, asic_uart1)));
     unwrap!(spawner.spawn(pio_uart::pio_rx_task(asic_uart2_rx)));

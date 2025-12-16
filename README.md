@@ -76,6 +76,7 @@ When connected the bitcrane usbserial firmware will create four serial ports:
 3. command bus
 	- always 0x00 
 4. command page
+	- PSU:  0x04
 	- I2C:  0x05
 	- GPIO: 0x06
 	- LED:  0x08 
@@ -85,6 +86,24 @@ When connected the bitcrane usbserial firmware will create four serial ports:
 6. data
 	- data to write. variable length. See below
 ```
+
+**PSU** (Bit-banged I2C on GPIO14/GPIO15 at 400Hz)
+
+Commands:
+
+- write: 0x20
+- read: 0x30
+- readwrite: 0x40
+
+Data:
+
+- [I2C address, (bytes to write), (number of bytes to read)]
+
+Example:
+
+- write 0xDE to addr 0x4F: `08 00 01 00 04 20 4F DE`
+- read one byte from addr 0x4C: `08 00 01 00 04 30 4C 01`
+- readwrite two bytes from addr 0x32, reg 0xFE: `09 00 01 00 04 40 32 FE 02`
 
 **I2C**
 
