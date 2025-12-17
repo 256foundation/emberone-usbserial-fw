@@ -124,28 +124,37 @@ impl<'d> BitBangI2c<'d> {
     /// Write a byte and return the ACK bit (false = ACK, true = NACK)
     async fn write_byte(&mut self, byte: u8) -> Result<bool, ()> {
         for i in (0..8).rev() {
+            // Set data bit while SCL is low
             if (byte >> i) & 1 == 1 {
                 self.sda_high();
             } else {
                 self.sda_low();
             }
+            
+            // SDA setup time (delay while SCL still low)
             self.delay().await;
-
+            
+            // SCL high phase
             self.scl_high_wait().await?;
             self.delay().await;
+            
+            // SCL low phase
             self.scl_low();
-            self.delay().await;
         }
 
         // Release SDA for ACK
         self.sda_high();
+        
+        // SDA setup time
         self.delay().await;
-
+        
+        // SCL high phase - read ACK
         self.scl_high_wait().await?;
         self.delay().await;
         let nack = self.read_sda();
+        
+        // SCL low phase
         self.scl_low();
-        self.delay().await;
 
         Ok(nack)
     }
@@ -157,14 +166,19 @@ impl<'d> BitBangI2c<'d> {
         self.sda_high(); // Release SDA for reading
 
         for i in (0..8).rev() {
+            // SCL low time - slave sets SDA
             self.delay().await;
+            
+            // SCL high phase
             self.scl_high_wait().await?;
             self.delay().await;
 
+            // Read data while SCL high
             if self.read_sda() {
                 byte |= 1 << i;
             }
 
+            // SCL low phase
             self.scl_low();
         }
 
@@ -174,12 +188,16 @@ impl<'d> BitBangI2c<'d> {
         } else {
             self.sda_high();
         }
+        
+        // SDA setup time
         self.delay().await;
-
+        
+        // SCL high phase
         self.scl_high_wait().await?;
         self.delay().await;
+        
+        // SCL low phase
         self.scl_low();
-        self.delay().await;
 
         self.sda_high();
 
