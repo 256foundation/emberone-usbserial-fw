@@ -1,6 +1,6 @@
 # bitcrane usbserial Firmware
 
-This repository contains RP2040 USB firmware for the [bitcrane v3](https://github.com/skot/bitcrane/tree/RP2040). 
+This repository contains RP2040 USB firmware for the [bitcrane v3](https://github.com/skot/bitcrane/tree/v3). 
 
 ## Developing
 
