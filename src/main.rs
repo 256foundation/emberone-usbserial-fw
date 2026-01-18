@@ -40,10 +40,14 @@ bind_interrupts!(struct Irqs {
 });
 
 const FLASH_SIZE: usize = 4 * 1024 * 1024;
-const VERSION: u16 = 0x0001;
 
 static MANUFACTURER: &str = "256F";
 static PRODUCT: &str = "EmberOne00";
+/// USB bcdDevice in BCD format: 0xJJMN = version JJ.M.N
+/// Major = hardware revision, minor.patch = firmware version.
+/// Firmware version restarts at 0.0 with each hardware revision.
+const VERSION: u16 = 0x0500;
+
 
 /// Return a unique serial number for this device by hashing its flash JEDEC ID.
 fn serial_number() -> &'static str {
