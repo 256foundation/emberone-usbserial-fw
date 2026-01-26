@@ -4,6 +4,7 @@ use heapless::Vec;
 pub struct Pins<'d> {
     pub asic_resetn: embassy_rp::gpio::Output<'d>,
     pub asic_pwr_en: embassy_rp::gpio::Output<'d>,
+    pub asic_io_pwr_en: embassy_rp::gpio::Output<'d>,
 }
 
 #[derive(defmt::Format)]
@@ -13,6 +14,9 @@ pub enum Command {
 
     SetAsicPowerEnable { level: bool },
     GetAsicPowerEnable,
+
+    SetAsicIoPowerEnable { level: bool },
+    GetAsicIoPowerEnable,
 }
 
 impl Command {
@@ -27,6 +31,10 @@ impl Command {
             [0x01] => Ok(Self::GetAsicPowerEnable),
             // Set ASIC Power EN (Active High)
             [0x01, level] => Ok(Self::SetAsicPowerEnable { level: *level > 0 }),
+            // Get ASIC IO Power Enable (Active High)
+            [0x02] => Ok(Self::GetAsicIoPowerEnable),
+            // Set ASIC IO Power EN (Active High)
+            [0x02, level] => Ok(Self::SetAsicIoPowerEnable { level: *level > 0 }),
             _ => Err(CommandError::Invalid),
         }
     }
@@ -43,6 +51,11 @@ impl super::ControllerCommand for Command {
             Command::GetAsicPowerEnable => bool::from(controller.gpio.asic_pwr_en.get_output_level()),
             Command::SetAsicPowerEnable { level } => {
                 controller.gpio.asic_pwr_en.set_level((*level).into());
+                *level
+            }
+            Command::GetAsicIoPowerEnable => bool::from(controller.gpio.asic_io_pwr_en.get_output_level()),
+            Command::SetAsicIoPowerEnable { level } => {
+                controller.gpio.asic_io_pwr_en.set_level((*level).into());
                 *level
             }
         };
