@@ -122,6 +122,7 @@ async fn main(spawner: Spawner) {
     let gpio_pins = control::gpio::Pins {
         asic_resetn: gpio::Output::new(p.PIN_11, gpio::Level::High),
         asic_pwr_en: gpio::Output::new(p.PIN_0, gpio::Level::Low),
+        asic_io_pwr_en: gpio::Output::new(p.PIN_18, gpio::Level::Low),
     };
 
     let adc = adc::Adc::new(p.ADC, Irqs, Default::default());

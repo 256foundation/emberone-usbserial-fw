@@ -106,15 +106,26 @@ Example:
 
 Commands:
 
-- Pin Number
+- 0x00: ASIC Reset (asic_resetn, active low)
+- 0x01: ASIC Power Enable (asic_pwr_en, active high)
+- 0x02: ASIC IO Power Enable (asic_io_pwr_en, active high)
 
 Data:
 
-- [pin level]
+- [pin level] (0 = low, 1 = high)
+- omit data to read current level
 
-Example
+Examples:
 
-- Set pin 1 Low: `07 00 00 00 06 01 00`
+- Set ASIC Reset High: `07 00 00 00 06 00 01`
+- Set ASIC Reset Low: `07 00 00 00 06 00 00`
+- Get ASIC Reset: `06 00 00 00 06 00`
+- Set ASIC Power Enable High: `07 00 00 00 06 01 01`
+- Set ASIC Power Enable Low: `07 00 00 00 06 01 00`
+- Get ASIC Power Enable: `06 00 00 00 06 01`
+- Set ASIC IO Power Enable High: `07 00 00 00 06 02 01`
+- Set ASIC IO Power Enable Low: `07 00 00 00 06 02 00`
+- Get ASIC IO Power Enable: `06 00 00 00 06 02`
 
 **ADC**
 
