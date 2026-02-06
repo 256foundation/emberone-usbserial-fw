@@ -69,7 +69,8 @@ async fn main(spawner: Spawner) {
     let usb_driver = usb::Driver::new(p.USB, Irqs);
 
     let usb_config = {
-        let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
+        // VID:PID allocated via https://pid.codes
+        let mut config = embassy_usb::Config::new(0x1209, 0x256f);
         config.device_release = VERSION;
         config.manufacturer = Some(MANUFACTURER);
         config.product = Some(PRODUCT);
