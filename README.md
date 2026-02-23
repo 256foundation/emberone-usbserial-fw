@@ -212,7 +212,7 @@ Data:
 
 Examples:
 
-- Display "1.25 TH/s":  `10 00 00 00 0A 10 31 2E 32 35 20 54 48 2F 73`
-- Display "850 GH/s":   `0F 00 00 00 0A 10 38 35 30 20 47 48 2F 73`
+- Display "1.25 TH/s":  `0F 00 00 00 0A 10 31 2E 32 35 20 54 48 2F 73`
+- Display "850 GH/s":   `0E 00 00 00 0A 10 38 35 30 20 47 48 2F 73`
 - Display "Booting":    `0D 00 00 00 0A 10 42 6F 6F 74 69 6E 67`
 
