@@ -76,11 +76,12 @@ When connected the bitcrane usbserial firmware will create four serial ports:
 3. command bus
 	- always 0x00 
 4. command page
-	- PSU:  0x04
-	- I2C:  0x05
-	- GPIO: 0x06
-	- LED:  0x08 
-	- Fan:  0x09
+	- PSU:     0x04
+	- I2C:     0x05
+	- GPIO:    0x06
+	- LED:     0x08 
+	- Fan:     0x09
+	- Display: 0x0A
 5. command 
 	- varies by command page. See below
 6. data
@@ -196,4 +197,22 @@ Examples:
 - Read fan3 tach (RPM):    `06 00 00 00 09 23`
 - Set fan4 speed to 90%:   `07 00 00 00 09 14 5A`
 - Read fan4 tach (RPM):    `06 00 00 00 09 24`
+
+**Display** (SSD1306 128x32 OLED on I2C0: GPIO8 SDA / GPIO9 SCL)
+
+Commands:
+
+- Set Hashrate: 0x10
+
+Data:
+
+- [ASCII string, up to 32 bytes] (e.g. "1.25 TH/s")
+- The string is split on the last space: the value is rendered in large font on the top line, the unit in smaller font on the bottom line.
+- If no space is found, the entire string is rendered as a single large centered line.
+
+Examples:
+
+- Display "1.25 TH/s":  `10 00 00 00 0A 10 31 2E 32 35 20 54 48 2F 73`
+- Display "850 GH/s":   `0F 00 00 00 0A 10 38 35 30 20 47 48 2F 73`
+- Display "Booting":    `0D 00 00 00 0A 10 42 6F 6F 74 69 6E 67`
 

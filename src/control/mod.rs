@@ -25,6 +25,9 @@ const FAN_COMMAND: u8 = 9;
 pub mod led;
 const LED_COMMAND: u8 = 8;
 
+pub mod display;
+const DISPLAY_COMMAND: u8 = 0x0A;
+
 
 #[derive(defmt::Format)]
 struct Command {
@@ -40,6 +43,7 @@ enum CommandInner {
     Gpio(gpio::Command),
     Fan(fan::Command),
     Led(led::Command),
+    Display(display::Command),
     Error(CommandError),
 }
 
@@ -71,6 +75,11 @@ impl Command {
                 id,
                 bus: buf[1],
                 inner: CommandInner::Led(led::Command::from_bytes(&buf[3..])?),
+            }),
+            DISPLAY_COMMAND => Ok(Self {
+                id,
+                bus: buf[1],
+                inner: CommandInner::Display(display::Command::from_bytes(&buf[3..])?),
             }),
             _ => Err(CommandError::Invalid),
         }
@@ -121,6 +130,7 @@ pub struct Controller {
     gpio: gpio::Pins<'static>,
     fan: fan::Pins<'static>,
     led: led::Led<'static>,
+    display: display::Display,
 }
 
 pub trait ControllerCommand {
@@ -137,6 +147,7 @@ impl Controller {
                 CommandInner::Gpio(cmd) => cmd.handle(self).await,
                 CommandInner::Fan(cmd) => cmd.handle(self).await,
                 CommandInner::Led(cmd) => cmd.handle(self).await,
+                CommandInner::Display(cmd) => cmd.handle(self).await,
                 CommandInner::Error(err) => Err(err),
             };
 
@@ -161,9 +172,9 @@ impl Controller {
 }
 
 #[embassy_executor::task]
-pub async fn usb_task(class: CdcAcmClass<'static, super::UsbDriver>, psu_i2c: psu::BitBangI2c<'static>, i2c: super::I2cDriver, gpio: gpio::Pins<'static>, fan: fan::Pins<'static>, led: led::Led<'static>) -> ! {
+pub async fn usb_task(class: CdcAcmClass<'static, super::UsbDriver>, psu_i2c: psu::BitBangI2c<'static>, i2c: super::I2cDriver, gpio: gpio::Pins<'static>, fan: fan::Pins<'static>, led: led::Led<'static>, display: display::Display) -> ! {
     let (tx, mut rx, mut _ctrl) = class.split_with_control();
-    let mut controller = Controller { tx, psu_i2c, i2c, gpio, fan, led };
+    let mut controller = Controller { tx, psu_i2c, i2c, gpio, fan, led, display };
 
     loop {
         rx.wait_connection().await;

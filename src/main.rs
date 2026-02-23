@@ -37,6 +37,7 @@ bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
     UART0_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART0>;
     UART1_IRQ => embassy_rp::uart::BufferedInterruptHandler<UART1>;
+    I2C0_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C0>;
     I2C1_IRQ => i2c::InterruptHandler<embassy_rp::peripherals::I2C1>;
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO0>;
     PIO1_IRQ_0 => embassy_rp::pio::InterruptHandler<PIO1>;
@@ -45,8 +46,8 @@ bind_interrupts!(struct Irqs {
 const FLASH_SIZE: usize = 4 * 1024 * 1024;
 const VERSION: u16 = 0x0001;
 
-static MANUFACTURER: &str = "OSMU";
-static PRODUCT: &str = "bitcrane3";
+static MANUFACTURER: &str = "256F";
+static PRODUCT: &str = "bitcrane-S19jpro";
 
 /// Return a unique serial number for this device by hashing its flash JEDEC ID.
 fn serial_number() -> &'static str {
@@ -147,6 +148,14 @@ async fn main(spawner: Spawner) {
     // PSU I2C: Bit-banged on GPIO14 (SDA) / GPIO15 (SCL) at 400kHz
     let psu_i2c = control::psu::BitBangI2c::new(p.PIN_14, p.PIN_15);
 
+    // Display I2C: I2C0 on GPIO8 (SDA) / GPIO9 (SCL) for SSD1306 OLED
+    let display = {
+        let sda = p.PIN_8;
+        let scl = p.PIN_9;
+        let display_i2c = embassy_rp::i2c::I2c::new_async(p.I2C0, scl, sda, Irqs, Default::default());
+        control::display::Display::new(display_i2c)
+    };
+
     let gpio_pins = control::gpio::Pins {
         rst0: gpio::Output::new(p.PIN_10, gpio::Level::Low),
         plug0: gpio::Input::new(p.PIN_11, gpio::Pull::None),
@@ -198,7 +207,7 @@ async fn main(spawner: Spawner) {
     };
 
     unwrap!(spawner.spawn(usb_task(builder.build())));
-    unwrap!(spawner.spawn(control::usb_task(control_class, psu_i2c, i2c, gpio_pins, fan_pins, led)));
+    unwrap!(spawner.spawn(control::usb_task(control_class, psu_i2c, i2c, gpio_pins, fan_pins, led, display)));
     unwrap!(spawner.spawn(uart::usb_task(asic_uart_class, asic_uart)));
     unwrap!(spawner.spawn(uart::usb_task1(asic_uart1_class, asic_uart1)));
     unwrap!(spawner.spawn(pio_uart::pio_rx_task(asic_uart2_rx)));
