@@ -44,11 +44,11 @@ impl Display {
     pub fn set_hashrate(&mut self, text: &str) -> Result<(), CommandError> {
         self.driver.clear_buffer();
 
-        // Split on last space to separate value from unit
-        // e.g. "1.25 TH/s" -> ("1.25", "TH/s")
-        if let Some(pos) = text.rfind(' ') {
-            let (value, unit) = text.split_at(pos);
-            let unit = unit.trim_start();
+        // Split on comma to separate top line from bottom line
+        // e.g. "1.25 TH/s,mining" -> ("1.25 TH/s", "mining")
+        if let Some(pos) = text.find(',') {
+            let (top, bottom) = text.split_at(pos);
+            let bottom = &bottom[1..]; // skip the comma
 
             let large_style = MonoTextStyleBuilder::new()
                 .font(&PROFONT_18_POINT)
@@ -60,17 +60,17 @@ impl Display {
                 .text_color(BinaryColor::On)
                 .build();
 
-            // Top line: large value, centered at y=16 (baseline for 18pt on 32px tall display)
-            Text::with_alignment(value, Point::new(64, 16), large_style, Alignment::Center)
+            // Top line: large text, centered at y=16 (baseline for 18pt on 32px tall display)
+            Text::with_alignment(top, Point::new(64, 16), large_style, Alignment::Center)
                 .draw(&mut self.driver)
                 .map_err(|_| CommandError::Message("Display draw error"))?;
 
-            // Bottom line: smaller unit, centered at y=30
-            Text::with_alignment(unit, Point::new(64, 30), small_style, Alignment::Center)
+            // Bottom line: smaller text, centered at y=30
+            Text::with_alignment(bottom, Point::new(64, 30), small_style, Alignment::Center)
                 .draw(&mut self.driver)
                 .map_err(|_| CommandError::Message("Display draw error"))?;
         } else {
-            // No space found — render entire string as single large line, vertically centered
+            // No comma found — render entire string as single large line, vertically centered
             let large_style = MonoTextStyleBuilder::new()
                 .font(&PROFONT_18_POINT)
                 .text_color(BinaryColor::On)

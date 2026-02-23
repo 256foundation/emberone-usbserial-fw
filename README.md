@@ -206,13 +206,13 @@ Commands:
 
 Data:
 
-- [ASCII string, up to 32 bytes] (e.g. "1.25 TH/s")
-- The string is split on the last space: the value is rendered in large font on the top line, the unit in smaller font on the bottom line.
-- If no space is found, the entire string is rendered as a single large centered line.
+- [ASCII string, up to 32 bytes] (e.g. "1.25,TH/s")
+- The string is split on the first comma: text before the comma is rendered in large font on the top line, text after the comma in smaller font on the bottom line.
+- If no comma is found, the entire string is rendered as a single large centered line.
 
 Examples:
 
-- Display "1.25 TH/s":  `0F 00 00 00 0A 10 31 2E 32 35 20 54 48 2F 73`
-- Display "850 GH/s":   `0E 00 00 00 0A 10 38 35 30 20 47 48 2F 73`
-- Display "Booting":    `0D 00 00 00 0A 10 42 6F 6F 74 69 6E 67`
+- Display "1.25" (large) / "TH/s" (small):  `0F 00 00 00 0A 10 31 2E 32 35 2C 54 48 2F 73`
+- Display "850" (large) / "GH/s" (small):    `0E 00 00 00 0A 10 38 35 30 2C 47 48 2F 73`
+- Display "Booting" (large, single line):     `0D 00 00 00 0A 10 42 6F 6F 74 69 6E 67`
 
