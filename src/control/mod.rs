@@ -22,6 +22,8 @@ const ADC_COMMAND: u8 = 7;
 pub mod led;
 const LED_COMMAND: u8 = 8;
 
+pub mod system;
+const SYSTEM_COMMAND: u8 = 9;
 
 #[derive(defmt::Format)]
 struct Command {
@@ -36,6 +38,7 @@ enum CommandInner {
     Gpio(gpio::Command),
     Adc(adc::Command),
     Led(led::Command),
+    System(system::Command),
     Error(CommandError),
 }
 
@@ -62,6 +65,11 @@ impl Command {
                 id,
                 bus: buf[1],
                 inner: CommandInner::Led(led::Command::from_bytes(&buf[3..])?),
+            }),
+            SYSTEM_COMMAND => Ok(Self {
+                id,
+                bus: buf[1],
+                inner: CommandInner::System(system::Command::from_bytes(&buf[3..])?),
             }),
             _ => Err(CommandError::Invalid),
         }
@@ -126,6 +134,7 @@ impl Controller {
                 CommandInner::Gpio(cmd) => cmd.handle(self).await,
                 CommandInner::Adc(cmd) => cmd.handle(self).await,
                 CommandInner::Led(cmd) => cmd.handle(self).await,
+                CommandInner::System(cmd) => cmd.handle(self).await,
                 CommandInner::Error(err) => Err(err),
             };
 
