@@ -1,5 +1,5 @@
 use embassy_rp::{
-    peripherals::{PIO0},
+    peripherals::PIO0,
     pio::{Common, PioPin, StateMachine},
     pio_programs::ws2812::{PioWs2812, PioWs2812Program},
 };

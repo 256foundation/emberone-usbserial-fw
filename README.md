@@ -59,20 +59,26 @@ When connected the emberOne usbserial firmware will create two serial ports. Usu
 - First serial port
 - baudrate does not matter
 
-**Packet Format**
+**Framing**
+
+Packets are length-prefixed with no start-of-frame marker or
+checksum. If framing gets out of sync, a silent gap on the
+bus (currently 4 ms) resets the firmware's receive state and
+resynchronizes the link.
+
+**Command Packet Format**
 
 | 0      | 1      | 2  | 3   | 4    | 5   | 6... |
 |--------|--------|----|-----|------|-----|------|
 | LEN LO | LEN HI | ID | BUS | PAGE | CMD | DATA |
 
 ```
-0. length low
-1. length high
-	- packet length is number of bytes of the whole packet. 
+0-1. length (u16 LE)
+	- total packet length
 2. command id
-	- Whatever byte you want. will be returned in the response 
+	- echoed in the response
 3. command bus
-	- always 0x00 
+	- always 0x00
 4. command page
 	- I2C:  0x05
 	- GPIO: 0x06
@@ -84,20 +90,74 @@ When connected the emberOne usbserial firmware will create two serial ports. Usu
 	- data to write. variable length. See below
 ```
 
+**Response Packet Format**
+
+Every command produces a response with the
+command ID echoed back so the host can match responses to
+requests.
+
+Success:
+
+| 0      | 1      | 2  | 3... |
+|--------|--------|----|------|
+| LEN LO | LEN HI | ID | DATA |
+
+```
+0-1. length (u16 LE)
+	- number of bytes in DATA only (does not include LEN or ID).
+	  Note: error responses use a different convention; see below
+2. command id
+	- echoed from the request
+3+. data
+	- response payload, varies by command. See below
+```
+
+Error:
+
+| 0      | 1      | 2  | 3    | 4...    |
+|--------|--------|----|------|---------|
+| LEN LO | LEN HI | ID | CODE | MESSAGE |
+
+```
+0-1. length (u16 LE)
+	- total packet length (including LEN and ID)
+2. command id
+	- echoed from the request, or 0xFF if the command
+	  could not be parsed
+3. error code
+	- 0x10: Timeout
+	- 0x11: Invalid command
+	- 0x12: Buffer overflow
+	- 0xFF: Error with message (ASCII text follows)
+4+. message
+	- only present when error code is 0xFF
+```
+
 **I2C**
 
 Commands:
 
+- set frequency: 0x10
 - write: 0x20
 - read: 0x30
 - readwrite: 0x40
 
 Data:
 
-- [I2C address, (bytes to write), (number of bytes to read)]
+- set frequency: [frequency (u32 LE)]
+- write/read/readwrite: [I2C address, (bytes to write),
+  (number of bytes to read)]
+
+Response data:
+
+- set frequency: echoed frequency (4 bytes, u32 LE)
+- write: number of bytes written (1 byte)
+- read: bytes read from device
+- readwrite: bytes read from device
 
 Example:
 
+- set I2C frequency to 400 kHz: `0A 00 01 00 05 10 80 1A 06 00`
 - write 0xDE to addr 0x4F: `08 00 01 00 05 20 4F DE`
 - read one byte from addr 0x4C: `08 00 01 00 05 30 4C 01`
 - readwrite two bytes from addr 0x32, reg 0xFE: `09 00 01 00 05 40 32 FE 02`
@@ -114,6 +174,10 @@ Data:
 
 - [pin level] (0 = low, 1 = high)
 - omit data to read current level
+
+Response data:
+
+- current pin level after the operation (1 byte, 0 or 1)
 
 Examples:
 
@@ -134,6 +198,10 @@ Commands:
 - read VDD: 0x50
 - read VIN: 0x51
 
+Response data:
+
+- raw ADC value (2 bytes, u16 LE)
+
 Example:
 
 - read VDD Pin: `06 00 00 00 07 50`
@@ -147,6 +215,10 @@ Commands:
 Data:
 
 - [R, G, B]
+
+Response data:
+
+- echoed R, G, B (3 bytes)
 
 Example:
 

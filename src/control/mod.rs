@@ -22,7 +22,6 @@ const ADC_COMMAND: u8 = 7;
 pub mod led;
 const LED_COMMAND: u8 = 8;
 
-
 #[derive(defmt::Format)]
 struct Command {
     id: i8,
