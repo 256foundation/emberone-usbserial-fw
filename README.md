@@ -96,41 +96,24 @@ Every command produces a response with the
 command ID echoed back so the host can match responses to
 requests.
 
-Success:
-
-| 0      | 1      | 2  | 3... |
-|--------|--------|----|------|
-| LEN LO | LEN HI | ID | DATA |
+| 0      | 1      | 2  | 3    | 4... |
+|--------|--------|----|------|------|
+| LEN LO | LEN HI | ID | CODE | DATA |
 
 ```
 0-1. length (u16 LE)
-	- number of bytes in DATA only (does not include LEN or ID).
-	  Note: error responses use a different convention; see below
-2. command id
-	- echoed from the request
-3+. data
-	- response payload, varies by command. See below
-```
-
-Error:
-
-| 0      | 1      | 2  | 3    | 4...    |
-|--------|--------|----|------|---------|
-| LEN LO | LEN HI | ID | CODE | MESSAGE |
-
-```
-0-1. length (u16 LE)
-	- total packet length (including LEN and ID)
+	- total packet length, same convention as commands
 2. command id
 	- echoed from the request, or 0xFF if the command
 	  could not be parsed
-3. error code
+3. status code
+	- 0x00: Success (DATA contains the response payload)
 	- 0x10: Timeout
 	- 0x11: Invalid command
 	- 0x12: Buffer overflow
-	- 0xFF: Error with message (ASCII text follows)
-4+. message
-	- only present when error code is 0xFF
+	- 0xFF: Error with message (DATA contains ASCII text)
+4+. data
+	- response payload or error message, varies by command
 ```
 
 **I2C**

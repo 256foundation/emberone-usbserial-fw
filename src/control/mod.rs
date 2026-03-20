@@ -22,6 +22,15 @@ const ADC_COMMAND: u8 = 7;
 pub mod led;
 const LED_COMMAND: u8 = 8;
 
+#[repr(u8)]
+enum Status {
+    Success = 0x00,
+    Timeout = 0x10,
+    Invalid = 0x11,
+    BufferOverflow = 0x12,
+    Message = 0xFF,
+}
+
 #[derive(defmt::Format)]
 struct Command {
     id: i8,
@@ -69,36 +78,27 @@ impl Command {
 
 #[derive(defmt::Format)]
 pub enum CommandError {
-    Timeout,               // 0x10
-    Invalid,               // 0x11
-    BufferOverflow,        // 0x12
-    Message(&'static str), // 0xff
+    Timeout,
+    Invalid,
+    BufferOverflow,
+    Message(&'static str),
 }
 
 impl CommandError {
-    fn to_bytes(&self) -> Vec<u8, 260> {
-        let mut buf = Vec::<u8, 260>::new();
-        buf.extend_from_slice(&[0x00, 0x00, 0xff]).unwrap();
-
+    fn status(&self) -> Status {
         match self {
-            CommandError::Timeout => {
-                buf.push(0x10).unwrap();
-            }
-            CommandError::Invalid => {
-                buf.push(0x11).unwrap();
-            }
-            CommandError::BufferOverflow => {
-                buf.push(0x12).unwrap();
-            }
-            CommandError::Message(msg) => {
-                buf.push(0xff).unwrap();
-                buf.extend_from_slice(msg.as_bytes()).unwrap();
-            }
+            CommandError::Timeout => Status::Timeout,
+            CommandError::Invalid => Status::Invalid,
+            CommandError::BufferOverflow => Status::BufferOverflow,
+            CommandError::Message(_) => Status::Message,
         }
+    }
 
-        let len = (buf.len() as u16).to_le_bytes();
-        buf[0..2].clone_from_slice(&len);
-        buf
+    fn message(&self) -> &[u8] {
+        match self {
+            CommandError::Message(msg) => msg.as_bytes(),
+            _ => &[],
+        }
     }
 }
 
@@ -116,6 +116,17 @@ pub trait ControllerCommand {
     async fn handle(&self, controller: &mut Controller) -> Result<Vec<u8, 256>, CommandError>;
 }
 
+fn build_response(id: u8, status: Status, data: &[u8]) -> Vec<u8, 260> {
+    let mut buf = Vec::<u8, 260>::new();
+    buf.extend_from_slice(&[0x00, 0x00]).unwrap();
+    buf.push(id).unwrap();
+    buf.push(status as u8).unwrap();
+    buf.extend_from_slice(data).unwrap();
+    let len = (buf.len() as u16).to_le_bytes();
+    buf[0..2].clone_from_slice(&len);
+    buf
+}
+
 impl Controller {
     pub async fn run(&mut self) {
         loop {
@@ -128,19 +139,10 @@ impl Controller {
                 CommandInner::Error(err) => Err(err),
             };
 
+            let id = cmd.id as u8;
             let buf = match res {
-                Ok(res) => {
-                    let mut buf = Vec::<u8, 260>::new();
-                    buf.extend_from_slice(&(res.len() as u16).to_le_bytes()).unwrap();
-                    buf.push(cmd.id as u8).unwrap();
-                    buf.extend_from_slice(&res).unwrap();
-                    buf
-                }
-                Err(err) => {
-                    let mut buf = err.to_bytes();
-                    buf[2] = cmd.id as u8;
-                    buf
-                }
+                Ok(res) => build_response(id, Status::Success, &res),
+                Err(err) => build_response(id, err.status(), err.message()),
             };
 
             let _ = self.tx.write_packet(&buf).await;
