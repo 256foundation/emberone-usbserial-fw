@@ -74,10 +74,11 @@ When connected the emberOne usbserial firmware will create two serial ports. Usu
 3. command bus
 	- always 0x00 
 4. command page
-	- I2C:  0x05
-	- GPIO: 0x06
-	- ADC:  0x07
-	- LED:  0x08 
+	- I2C:    0x05
+	- GPIO:   0x06
+	- ADC:    0x07
+	- LED:    0x08
+	- System: 0x09
 5. command 
 	- varies by command page. See below
 6. data
@@ -151,3 +152,23 @@ Data:
 Example:
 
 - Set LED Magenta: `09 00 00 00 08 10 FF 00 FF`
+
+**System**
+
+Commands require a magic payload to guard against accidental
+reboot from line noise or a framing desync. No response is
+sent; the host detects success by observing USB re-enumeration.
+
+Commands:
+
+- Reboot: 0x01 (magic: `DE AD BE EF`)
+- Reboot to bootloader: 0x02 (magic: `B0 07 10 AD`)
+
+Data:
+
+- [magic (4 bytes)]
+
+Examples:
+
+- Reboot: `0A 00 00 00 09 01 DE AD BE EF`
+- Reboot to bootloader: `0A 00 00 00 09 02 B0 07 10 AD`
