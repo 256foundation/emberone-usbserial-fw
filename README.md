@@ -109,6 +109,9 @@ Commands:
 - 0x00: ASIC Reset (asic_resetn, active low)
 - 0x01: ASIC Power Enable (asic_pwr_en, active high)
 - 0x02: ASIC IO Power Enable (asic_io_pwr_en, active high)
+- 0x03: PGOOD (input, read-only)
+- 0x04: THERM_N (input, active low, read-only)
+- 0x05: SMB_ALRT_N (input, active low, read-only)
 
 Data:
 
@@ -126,6 +129,9 @@ Examples:
 - Set ASIC IO Power Enable High: `07 00 00 00 06 02 01`
 - Set ASIC IO Power Enable Low: `07 00 00 00 06 02 00`
 - Get ASIC IO Power Enable: `06 00 00 00 06 02`
+- Get PGOOD: `06 00 00 00 06 03`
+- Get THERM_N: `06 00 00 00 06 04`
+- Get SMB_ALRT_N: `06 00 00 00 06 05`
 
 **ADC**
 

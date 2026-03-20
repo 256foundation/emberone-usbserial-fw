@@ -129,6 +129,9 @@ async fn main(spawner: Spawner) {
         asic_resetn: gpio::Output::new(p.PIN_11, gpio::Level::High),
         asic_pwr_en: gpio::Output::new(p.PIN_0, gpio::Level::Low),
         asic_io_pwr_en: gpio::Output::new(p.PIN_18, gpio::Level::Low),
+        pgood: gpio::Input::new(p.PIN_16, gpio::Pull::None),
+        therm_n: gpio::Input::new(p.PIN_2, gpio::Pull::None),
+        smb_alrt_n: gpio::Input::new(p.PIN_17, gpio::Pull::None),
     };
 
     let adc = adc::Adc::new(p.ADC, Irqs, Default::default());
