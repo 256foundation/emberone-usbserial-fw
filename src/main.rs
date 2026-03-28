@@ -46,7 +46,7 @@ static PRODUCT: &str = "EmberOne00";
 /// USB bcdDevice in BCD format: 0xJJMN = version JJ.M.N
 /// Major = hardware revision, minor.patch = firmware version.
 /// Firmware version restarts at 0.0 with each hardware revision.
-const VERSION: u16 = 0x0500;
+const VERSION: u16 = 0x05_1_0;
 
 
 /// Return a unique serial number for this device by hashing its flash unique ID.
